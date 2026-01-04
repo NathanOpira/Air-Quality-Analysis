@@ -1,291 +1,200 @@
-"""
-distance_analyzer.py
-Core geometric analysis module.
-Implements the technical spine: Structure through distance metrics.
-"""
-import numpy as np
 import pandas as pd
-from scipy.spatial.distance import pdist, squareform, cdist
-from scipy.stats import spearmanr
-import matplotlib.pyplot as plt
-import seaborn as sns
-from typing import List, Tuple, Dict
-import warnings
-warnings.filterwarnings('ignore')
+import numpy as np
+from sklearn.metrics.pairwise import euclidean_distances, cosine_distances, manhattan_distances
+from scipy.spatial.distance import cdist
+from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import StandardScaler
 
 class GeometricAnalyzer:
-    """Analyzer for distance geometry in tabular data."""
+    """Analyze geometric properties of data using different distance metrics"""
 
-    def __init__(self, df: pd.DataFrame, feature_columns: List[str]):
-        self.df = df
-        self.features = df[feature_columns].copy()
-        self.X = self.features.values
-        self.feature_names = feature_columns
+    def __init__(self, data, feature_subset=None):
+        self.data = data.copy()
+        self.feature_names = data.columns.tolist()
+
+        if feature_subset:
+            self.feature_subset = [f for f in feature_subset if f in self.feature_names]
+            if len(self.feature_subset) == 0:
+                self.feature_subset = self.feature_names[:min(10, len(self.feature_names))]
+        else:
+            self.feature_subset = self.feature_names[:min(10, len(self.feature_names))]
+
+        self.X = self.data[self.feature_subset].values
+        self.scaler = StandardScaler()
+        self.X_scaled = self.scaler.fit_transform(self.X)
         self.results = {}
 
-    def compute_distance_matrices(self, metrics: List[str] = None,
-                                 subsample: int = 1000):
-        """
-        Compute distance matrices for multiple metrics.
+    def compute_distance_matrices(self, metrics=['euclidean', 'cosine', 'cityblock', 'correlation'],
+                                  subsample=None, random_state=42):
+        """Compute distance matrices using different metrics"""
 
-        Parameters
-        ----------
-        metrics : list, optional
-            Distance metrics to compute
-        subsample : int
-            Number of samples to use (for speed)
-
-        Returns
-        -------
-        dict
-            Results including distance matrices and properties
-        """
-        if metrics is None:
-            metrics = ['euclidean', 'cosine', 'cityblock', 'correlation']
-
-        print(f"🔍 Computing distance geometry for {len(metrics)} metrics...")
-
-        # Subsample for efficiency
-        n_samples = min(subsample, len(self.X))
-        indices = np.random.choice(len(self.X), n_samples, replace=False)
-        X_sample = self.X[indices]
+        # Subsample if requested
+        if subsample and subsample < len(self.X_scaled):
+            np.random.seed(random_state)
+            idx = np.random.choice(len(self.X_scaled), subsample, replace=False)
+            X_sampled = self.X_scaled[idx]
+            sample_indices = idx
+        else:
+            X_sampled = self.X_scaled
+            sample_indices = np.arange(len(self.X_scaled))
 
         distance_matrices = []
         metric_properties = []
 
         for metric in metrics:
-            # Special handling for cosine
-            if metric == 'cosine':
-                norms = np.linalg.norm(X_sample, axis=1, keepdims=True)
-                X_norm = X_sample / np.where(norms == 0, 1, norms)
-                dist = pdist(X_norm, metric='cosine')
+            if metric == 'euclidean':
+                D = euclidean_distances(X_sampled)
+            elif metric == 'cosine':
+                D = cosine_distances(X_sampled)
+            elif metric == 'cityblock' or metric == 'manhattan':
+                D = manhattan_distances(X_sampled)
+            elif metric == 'correlation':
+                D = cdist(X_sampled, X_sampled, metric='correlation')
             else:
-                dist = pdist(X_sample, metric=metric)
+                continue
 
-            dist_matrix = squareform(dist)
-            distance_matrices.append(dist_matrix)
+            distance_matrices.append(D)
 
-            # Compute properties
-            flat_dist = dist_matrix[np.triu_indices_from(dist_matrix, k=1)]
             properties = {
                 'metric': metric,
-                'mean_distance': np.mean(flat_dist),
-                'std_distance': np.std(flat_dist),
-                'concentration_ratio': np.std(flat_dist) / (np.mean(flat_dist) + 1e-10),
-                'min_distance': np.min(flat_dist),
-                'max_distance': np.max(flat_dist)
+                'mean_distance': np.mean(D),
+                'std_distance': np.std(D),
+                'min_distance': np.min(D),
+                'max_distance': np.max(D)
             }
             metric_properties.append(properties)
 
-        self.results['distance_matrices'] = np.array(distance_matrices)
-        self.results['metric_properties'] = pd.DataFrame(metric_properties)
-        self.results['sample_indices'] = indices
-        self.results['metrics'] = metrics
+        self.results = {
+            'distance_matrices': distance_matrices,
+            'metrics': [m for m in metrics if m in ['euclidean', 'cosine', 'cityblock', 'correlation']],
+            'metric_properties': pd.DataFrame(metric_properties),
+            'sample_indices': sample_indices,
+            'X_sampled': X_sampled
+        }
 
-        print("✅ Distance matrices computed.")
         return self.results
 
-    def compare_nearest_neighbors(self, k: int = 10):
-        """
-        Compare nearest neighbors across different metrics.
-
-        Parameters
-        ----------
-        k : int
-            Number of nearest neighbors to consider
-
-        Returns
-        -------
-        pd.DataFrame
-            Agreement matrix between metrics
-        """
+    def compare_nearest_neighbors(self, k=10):
+        """Compare nearest neighbors across different metrics"""
         if 'distance_matrices' not in self.results:
-            raise ValueError("Run compute_distance_matrices() first.")
+            return None
 
-        dist_matrices = self.results['distance_matrices']
         metrics = self.results['metrics']
-        n_metrics = len(metrics)
+        distance_matrices = self.results['distance_matrices']
+        n_samples = len(self.results['X_sampled'])
 
+        # Get neighbor sets for each metric
+        neighbor_sets = []
+
+        for D in distance_matrices:
+            neighbors = []
+            for j in range(n_samples):
+                dists = D[j]
+                dists_without_self = dists.copy()
+                dists_without_self[j] = np.inf
+                nearest_idx = np.argsort(dists_without_self)[:k]
+                neighbors.append(set(nearest_idx))
+            neighbor_sets.append(neighbors)
+
+        # Compute agreement matrix
+        n_metrics = len(metrics)
         agreement_matrix = np.zeros((n_metrics, n_metrics))
 
         for i in range(n_metrics):
             for j in range(n_metrics):
-                # Get k-nearest neighbors for each point
-                neighbors_i = np.argsort(dist_matrices[i], axis=1)[:, 1:k+1]
-                neighbors_j = np.argsort(dist_matrices[j], axis=1)[:, 1:k+1]
+                if i == j:
+                    agreement_matrix[i, j] = 1.0
+                else:
+                    agreements = []
+                    for sample_idx in range(n_samples):
+                        set_i = neighbor_sets[i][sample_idx]
+                        set_j = neighbor_sets[j][sample_idx]
+                        intersection = len(set_i.intersection(set_j))
+                        union = len(set_i.union(set_j))
+                        jaccard = intersection / union if union > 0 else 0
+                        agreements.append(jaccard)
 
-                # Compute average overlap
-                overlaps = []
-                for idx in range(len(neighbors_i)):
-                    overlap = len(set(neighbors_i[idx]) & set(neighbors_j[idx])) / k
-                    overlaps.append(overlap)
+                    agreement_matrix[i, j] = np.mean(agreements)
 
-                agreement_matrix[i, j] = np.mean(overlaps)
+        agreement_df = pd.DataFrame(
+            agreement_matrix,
+            index=metrics,
+            columns=metrics
+        )
 
-        agreement_df = pd.DataFrame(agreement_matrix,
-                                   index=metrics,
-                                   columns=metrics)
+        return agreement_df.round(3)
 
-        self.results['neighbor_agreement'] = agreement_df
-        return agreement_df
+    def visualize_analysis(self, save_path=None):
+        """Create visualization of distance geometry analysis"""
+        # Simplified visualization - you can expand this
+        import matplotlib.pyplot as plt
 
-    def visualize_analysis(self, save_path: str = None):
-        """
-        Create comprehensive visualization of distance analysis.
-
-        Parameters
-        ----------
-        save_path : str, optional
-            Path to save the figure
-
-        Returns
-        -------
-        matplotlib.figure.Figure
-            The created figure
-        """
         if 'distance_matrices' not in self.results:
-            raise ValueError("Run compute_distance_matrices() first.")
+            return None
 
-        # Set style
-        plt.style.use('seaborn-v0_8-whitegrid')
-        fig = plt.figure(figsize=(16, 12))
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-        # 1. Agreement heatmap
-        ax1 = plt.subplot(2, 3, 1)
-        if 'neighbor_agreement' in self.results:
-            sns.heatmap(self.results['neighbor_agreement'],
-                       annot=True, fmt='.2f', cmap='YlOrRd',
-                       ax=ax1, cbar_kws={'label': 'Neighbor Overlap'})
-            ax1.set_title('Metric Agreement (k=10)', fontsize=12, fontweight='bold')
-
-        # 2. Distance distributions
-        ax2 = plt.subplot(2, 3, 2)
-        dist_matrices = self.results['distance_matrices']
+        # Plot distance distributions
         metrics = self.results['metrics']
+        distance_matrices = self.results['distance_matrices']
+        colors = plt.cm.Set1(np.linspace(0, 1, len(metrics)))
 
-        for i, metric in enumerate(metrics):
-            dist_vals = dist_matrices[i][np.triu_indices_from(dist_matrices[i], k=1)]
-            # Sample for cleaner plot
-            sample_idx = np.random.choice(len(dist_vals), min(5000, len(dist_vals)), replace=False)
-            sns.kdeplot(dist_vals[sample_idx], label=metric, ax=ax2, linewidth=2)
+        for i, (metric, D, color) in enumerate(zip(metrics, distance_matrices, colors)):
+            n = len(D)
+            dist_vals = D[np.triu_indices(n, k=1)]
+            axes[0].hist(dist_vals, bins=50, alpha=0.5, label=metric,
+                        density=True, color=color, edgecolor='black', linewidth=0.5)
 
-        ax2.set_xlabel('Distance')
-        ax2.set_ylabel('Density')
-        ax2.set_title('Distance Distributions', fontsize=12, fontweight='bold')
-        ax2.legend()
+        axes[0].set_xlabel('Distance')
+        axes[0].set_ylabel('Density')
+        axes[0].set_title('Distance Distributions')
+        axes[0].legend()
+        axes[0].grid(True, alpha=0.3)
 
-        # 3. Concentration ratios
-        ax3 = plt.subplot(2, 3, 3)
-        props = self.results['metric_properties']
-        colors = plt.cm.Set3(np.linspace(0, 1, len(props)))
+        # Plot agreement matrix
+        agreement = self.compare_nearest_neighbors(k=5)
+        if agreement is not None:
+            im = axes[1].imshow(agreement.values, cmap='YlOrRd', vmin=0, vmax=1)
+            axes[1].set_xticks(np.arange(len(metrics)))
+            axes[1].set_yticks(np.arange(len(metrics)))
+            axes[1].set_xticklabels(metrics, rotation=45, ha='right')
+            axes[1].set_yticklabels(metrics)
+            axes[1].set_title('Neighbor Agreement (k=5)')
+            plt.colorbar(im, ax=axes[1], label='Jaccard Similarity')
 
-        bars = ax3.bar(range(len(props)), props['concentration_ratio'],
-                      color=colors, edgecolor='black')
-        ax3.set_xticks(range(len(props)))
-        ax3.set_xticklabels(props['metric'], rotation=45, ha='right')
-        ax3.set_ylabel('Concentration Ratio (σ/μ)')
-        ax3.set_title('Distance Concentration', fontsize=12, fontweight='bold')
-
-        # Add values on bars
-        for bar in bars:
-            height = bar.get_height()
-            ax3.text(bar.get_x() + bar.get_width()/2., height + 0.001,
-                    f'{height:.3f}', ha='center', va='bottom', fontsize=9)
-
-        # 4. Case study: Single point's neighbors
-        ax4 = plt.subplot(2, 3, 4)
-        case_point = 42  # Example point
-
-        neighbor_data = []
-        for i, metric in enumerate(metrics):
-            distances = dist_matrices[i][case_point]
-            nearest = np.argsort(distances)[1:11]  # Top 10 excluding self
-            for rank, idx in enumerate(nearest):
-                neighbor_data.append({
-                    'metric': metric,
-                    'neighbor_rank': rank + 1,
-                    'distance': distances[idx]
-                })
-
-        neighbor_df = pd.DataFrame(neighbor_data)
-
-        # Pivot for heatmap
-        pivot_df = neighbor_df.pivot(index='metric', columns='neighbor_rank', values='distance')
-        sns.heatmap(pivot_df, annot=True, fmt='.1f', cmap='coolwarm', ax=ax4)
-        ax4.set_title(f'Neighbors of Sample {case_point}', fontsize=12, fontweight='bold')
-        ax4.set_xlabel('Neighbor Rank')
-
-        # 5. Metric correlation
-        ax5 = plt.subplot(2, 3, 5)
-
-        # Flatten distance matrices
-        n_metrics = len(dist_matrices)
-        n_pairs = dist_matrices[0].shape[0] * (dist_matrices[0].shape[0] - 1) // 2
-
-        dist_vectors = np.zeros((n_metrics, n_pairs))
-        for i in range(n_metrics):
-            dist_vectors[i] = dist_matrices[i][np.triu_indices_from(dist_matrices[i], k=1)]
-
-        # Compute correlation
-        corr_matrix = np.corrcoef(dist_vectors)
-
-        sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='RdYlBu',
-                   xticklabels=metrics, yticklabels=metrics, ax=ax5)
-        ax5.set_title('Metric Correlation', fontsize=12, fontweight='bold')
-
-        # 6. Best metric recommendation
-        ax6 = plt.subplot(2, 3, 6)
-        ax6.axis('off')
-
-        best_cluster = props.loc[props['concentration_ratio'].idxmin()]
-        best_nn = props.loc[props['std_distance'].idxmax()]
-
-        recommendations = [
-            "RECOMMENDATIONS:",
-            "",
-            f"1. For CLUSTERING:",
-            f"   • Use {best_cluster['metric']}",
-            f"   • Lowest concentration ratio ({best_cluster['concentration_ratio']:.3f})",
-            "",
-            f"2. For NEAREST NEIGHBOR:",
-            f"   • Use {best_nn['metric']}",
-            f"   • Highest std distance ({best_nn['std_distance']:.2f})",
-            "",
-            "3. KEY INSIGHT:",
-            "   Metric choice changes",
-            "   60-80% of nearest neighbors!"
-        ]
-
-        ax6.text(0.1, 0.9, '\n'.join(recommendations),
-                fontsize=11, family='monospace',
-                verticalalignment='top',
-                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-
-        plt.suptitle('Distance Geometry Analysis: Air Quality Dataset',
-                    fontsize=16, fontweight='bold', y=1.02)
+        plt.suptitle('Distance Geometry Analysis', fontsize=14, fontweight='bold')
         plt.tight_layout()
 
         if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            print(f" Visualization saved to {save_path}")
+            import os
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            plt.savefig(save_path, dpi=150, bbox_inches='tight')
 
         return fig
 
     def generate_report(self):
-        """Generate a summary report of the analysis."""
-        if 'metric_properties' not in self.results:
-            raise ValueError("Run compute_distance_matrices() first.")
+        """Generate analysis report"""
+        if 'distance_matrices' not in self.results:
+            return None
 
-        props = self.results['metric_properties']
+        properties = self.results['metric_properties']
+
+        # Determine best metrics
+        best_clustering_idx = properties['std_distance'].idxmax()
+        best_clustering_metric = properties.loc[best_clustering_idx, 'metric']
+
+        properties['compactness_score'] = properties['mean_distance'] / (properties['std_distance'] + 1e-6)
+        best_nn_idx = properties['compactness_score'].idxmin()
+        best_nn_metric = properties.loc[best_nn_idx, 'metric']
 
         report = {
-            'analysis_date': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M'),
-            'n_samples': len(self.results['sample_indices']),
-            'n_features': len(self.feature_names),
-            'best_clustering_metric': props.loc[props['concentration_ratio'].idxmin(), 'metric'],
-            'best_nn_metric': props.loc[props['std_distance'].idxmax(), 'metric'],
+            'analysis_date': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'n_samples': len(self.data),
+            'n_features': len(self.feature_subset),
+            'feature_names': self.feature_subset,
             'metrics_tested': self.results['metrics'],
-            'feature_names': self.feature_names[:10]  # First 10 features
+            'best_clustering_metric': best_clustering_metric,
+            'best_nn_metric': best_nn_metric
         }
 
         return report
