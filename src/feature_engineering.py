@@ -1,122 +1,138 @@
-"""Feature engineering utilities for Air Quality Analysis.
-
-Provides `create_analytical_features` which creates a set of analytical
-features from raw air-quality DataFrames for modeling and geometric analysis.
 """
-
-from typing import List, Tuple
-
-import numpy as np
+features.py
+Feature engineering for air quality analysis.
+Focus on geometric and temporal features for distance analysis.
+"""
 import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
 
+def create_temporal_features(df):
+    """
+    Create cyclic temporal features from datetime index.
 
-def create_analytical_features(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
-	"""
-	Create features for geometric analysis and modeling.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with datetime index
 
-	Returns a tuple with (features_dataframe, feature_names).
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with temporal features added
+    """
+    df_feat = df.copy()
 
-	The function will:
-	- keep a copy of the input
-	- identify pollution and sensor cols (columns containing '(GT)' or
-	  commonly used sensor names 'T', 'RH', 'AH')
-	- add normalized pollution columns (suffix '_norm')
-	- add cyclic temporal encodings for hour and day-of-week when a
-	  datetime index is present (or if a 'date' column is present it will
-	  attempt to convert it)
-	- add pollutant ratios and fractions (CO/NOx, NO2/NOx)
-	- add first-differences for short-term rate-of-change
-	- add simple rolling statistics and lag features
-	- add a few interaction terms (temperature x humidity)
+    if df_feat.index.inferred_type == 'datetime64':
+        # Hour of day (cyclic)
+        df_feat['hour_sin'] = np.sin(2 * np.pi * df_feat.index.hour / 24)
+        df_feat['hour_cos'] = np.cos(2 * np.pi * df_feat.index.hour / 24)
 
-	Parameters
-	----------
-	df : pd.DataFrame
-		Input time-indexed or indexed dataset containing pollutant and
-		environmental sensor columns.
+        # Day of week (cyclic)
+        df_feat['day_sin'] = np.sin(2 * np.pi * df_feat.index.dayofweek / 7)
+        df_feat['day_cos'] = np.cos(2 * np.pi * df_feat.index.dayofweek / 7)
 
-	Returns
-	-------
-	Tuple[pd.DataFrame, List[str]]
-		DataFrame containing engineered features (aligned with input index)
-		and the ordered list of feature column names.
-	"""
+        # Month (cyclic)
+        df_feat['month_sin'] = np.sin(2 * np.pi * df_feat.index.month / 12)
+        df_feat['month_cos'] = np.cos(2 * np.pi * df_feat.index.month / 12)
 
-	# Make a working copy
-	df_feat = df.copy()
+        # Weekend flag
+        df_feat['is_weekend'] = (df_feat.index.dayofweek >= 5).astype(int)
 
-	# If user supplied a 'date' column but index is not datetime, try to use it
-	if not pd.api.types.is_datetime64_any_dtype(df_feat.index) and "date" in df_feat.columns:
-		try:
-			df_feat.index = pd.to_datetime(df_feat["date"]).tz_localize(None)
-		except Exception:
-			pass
+        # Time of day categories
+        df_feat['is_night'] = ((df_feat.index.hour >= 0) & (df_feat.index.hour < 6)).astype(int)
+        df_feat['is_morning'] = ((df_feat.index.hour >= 6) & (df_feat.index.hour < 12)).astype(int)
+        df_feat['is_afternoon'] = ((df_feat.index.hour >= 12) & (df_feat.index.hour < 18)).astype(int)
+        df_feat['is_evening'] = ((df_feat.index.hour >= 18)).astype(int)
 
-	# Identify pollution/sensor features
-	pollution_features = [col for col in df_feat.columns if "(GT)" in col or col in ["T", "RH", "AH"]]
+    return df_feat
 
-	# 1. Original pollution features (normalized -> new columns with _norm)
-	for col in pollution_features:
-		try:
-			series = df_feat[col].astype(float)
-			mean = series.mean(skipna=True)
-			std = series.std(skipna=True)
-			if pd.isna(std) or std == 0:
-				df_feat[f"{col}_norm"] = series.fillna(0)
-			else:
-				df_feat[f"{col}_norm"] = (series - mean) / std
-		except Exception:
-			df_feat[f"{col}_norm"] = df_feat[col]
+def create_pollution_features(df):
+    """
+    Create pollution-specific features.
 
-	# 2. Temporal features (cyclic encoding)
-	if pd.api.types.is_datetime64_any_dtype(df_feat.index):
-		idx = df_feat.index
-		df_feat["hour_sin"] = np.sin(2 * np.pi * idx.hour / 24)
-		df_feat["hour_cos"] = np.cos(2 * np.pi * idx.hour / 24)
-		df_feat["day_sin"] = np.sin(2 * np.pi * idx.dayofweek / 7)
-		df_feat["day_cos"] = np.cos(2 * np.pi * idx.dayofweek / 7)
-		df_feat["is_weekend"] = (idx.dayofweek >= 5).astype(int)
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with pollution columns
 
-	# 3. Pollutant ratios (combustion signatures)
-	if "CO(GT)" in df_feat.columns and "NOx(GT)" in df_feat.columns:
-		df_feat["CO_to_NOx"] = df_feat["CO(GT)"] / (df_feat["NOx(GT)"] + 1e-10)
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with pollution features added
+    """
+    df_feat = df.copy()
 
-	if "NO2(GT)" in df_feat.columns and "NOx(GT)" in df_feat.columns:
-		df_feat["NO2_fraction"] = df_feat["NO2(GT)"] / (df_feat["NOx(GT)"] + 1e-10)
+    # Pollutant ratios (combustion signatures)
+    if 'CO(GT)' in df_feat.columns and 'NOx(GT)' in df_feat.columns:
+        df_feat['CO_to_NOx'] = df_feat['CO(GT)'] / (df_feat['NOx(GT)'] + 1e-10)
 
-	# 4. Rate of change (1st derivative) for the first up-to-5 pollutants
-	for col in pollution_features[:5]:
-		if col in df_feat.columns:
-			df_feat[f"{col}_diff"] = df_feat[col].diff().fillna(0)
+    if 'NO2(GT)' in df_feat.columns and 'NOx(GT)' in df_feat.columns:
+        df_feat['NO2_fraction'] = df_feat['NO2(GT)'] / (df_feat['NOx(GT)'] + 1e-10)
 
-	# 5. Rolling statistics and lag features
-	rolling_windows = [3, 24]
-	for w in rolling_windows:
-		for col in pollution_features:
-			if col in df_feat.columns:
-				df_feat[f"{col}_roll_mean_{w}"] = df_feat[col].rolling(window=w, min_periods=1).mean()
-				df_feat[f"{col}_roll_std_{w}"] = df_feat[col].rolling(window=w, min_periods=1).std().fillna(0)
+    # Meteorological interactions
+    if 'T' in df_feat.columns and 'RH' in df_feat.columns:
+        df_feat['heat_index'] = 0.5 * (df_feat['T'] + 61.0 + (df_feat['T'] - 68.0) * 1.2 + df_feat['RH'] * 0.094)
 
-	# Add simple lags (1-hour and 24-hour) if appropriate
-	lags = [1, 24]
-	for lag in lags:
-		for col in pollution_features:
-			if col in df_feat.columns:
-				df_feat[f"{col}_lag_{lag}"] = df_feat[col].shift(lag)
+    # Rate of change (1-hour difference)
+    pollution_cols = [col for col in df.columns if '(GT)' in col]
+    for col in pollution_cols[:5]:  # First 5 pollutants
+        if col in df_feat.columns:
+            df_feat[f'{col}_diff'] = df_feat[col].diff().fillna(0)
 
-	# 6. Interaction terms (temperature x humidity)
-	if "T" in df_feat.columns and "RH" in df_feat.columns:
-		df_feat["T_x_RH"] = df_feat["T"] * df_feat["RH"]
+    return df_feat
 
-	# 7. Fallback missing-value handling (do not drop index)
-	df_feat = df_feat.fillna(method="ffill").fillna(0)
+def normalize_features(df, feature_columns):
+    """
+    Normalize features for distance analysis.
 
-	# 8. Build feature column list: include normalized pollution features first,
-	#    then the engineered features sorted deterministically
-	norm_cols = [f"{c}_norm" for c in pollution_features if f"{c}_norm" in df_feat.columns]
-	engineered_cols = [c for c in df_feat.columns if c not in pollution_features and c not in norm_cols]
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with features
+    feature_columns : list
+        Columns to normalize
 
-	feature_cols = pollution_features + norm_cols + engineered_cols
+    Returns
+    -------
+    np.ndarray
+        Normalized feature matrix
+    StandardScaler
+        Fitted scaler object
+    """
+    scaler = StandardScaler()
+    X_normalized = scaler.fit_transform(df[feature_columns])
+    return X_normalized, scaler
 
-	return df_feat.loc[:, feature_cols], feature_cols
+def get_feature_matrix(df):
+    """
+    Create complete feature matrix for analysis.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Cleaned DataFrame
+
+    Returns
+    -------
+    pd.DataFrame
+        Feature matrix
+    list
+        Feature names
+    """
+    # Add temporal features
+    df_feat = create_temporal_features(df)
+
+    # Add pollution features
+    df_feat = create_pollution_features(df_feat)
+
+    # Select features for analysis
+    pollution_features = [col for col in df.columns if '(GT)' in col or col in ['T', 'RH', 'AH']]
+    temporal_features = [col for col in df_feat.columns if col not in df.columns]
+
+    all_features = pollution_features + temporal_features
+
+    # Keep only columns that exist
+    available_features = [f for f in all_features if f in df_feat.columns]
+
+    return df_feat[available_features], available_features

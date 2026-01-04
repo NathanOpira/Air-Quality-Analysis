@@ -1,39 +1,94 @@
-# Air Quality Analysis and Prediction
+# The Geometry of Air Quality: A Distance-Based Analysis
 
-## Overview
-This project aims to analyze and predict air quality using data from the UCI Machine Learning Repository. It includes data preprocessing, exploratory data analysis (EDA), feature engineering, and predictive modeling.
+## 🎯 Technical Spine
+**"Structure, similarity, and behavior in tabular data through distance metrics."**
 
-## Project Structure
-- **data/**: Contains raw and processed datasets.
-  - `raw/`: Original datasets (e.g., `AirQualityUCI.csv`).
-  - `processed/`: Cleaned and transformed datasets.
-- **models/**: Saved models and related files.
-- **notebooks/**: Jupyter notebooks for EDA, preprocessing, modeling, and forecasting.
-- **outputs/**: Generated figures and reports.
-- **src/**: Source code for data loading, feature engineering, and model training.
-  - `data_loader.py`: Functions for loading and preprocessing data.
-  - `features.py`: Feature engineering utilities.
-  - `train_model.py`: Scripts for training predictive models.
-  - `utils.py`: Helper functions.
+This project moves beyond traditional air quality prediction to analyze the **geometric structure** of multivariate pollution data. We investigate how different mathematical definitions of "distance" fundamentally change our understanding of similar atmospheric states.
 
-## Setup Instructions
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd Air-Quality-Analysis-and-Prediction
-   ```
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Run the notebooks or scripts as needed.
+## 🔬 Core Research Questions
+1. How do distance metrics (Euclidean, Cosine, Manhattan, Correlation) perceive the same air quality data differently?
+2. What geometric properties emerge when we view pollutants as points in high-dimensional space?
+3. How does feature engineering affect the data manifold structure?
+4. Which metric is optimal for specific tasks (clustering, anomaly detection, forecasting)?
 
-## Usage
-- Use the `notebooks/` directory to explore the data and build models.
-- Use the `src/` directory for running scripts programmatically.
+## 📊 Key Findings
+### 1. Metric Dependence of Similarity
+- **Euclidean distance** groups days by *absolute pollution magnitude*
+- **Cosine distance** groups days by *pollutant proportion* (reveals combustion regimes)
+- **Correlation distance** ignores magnitude, focuses on *pattern similarity*
+- Neighbor agreement between metrics can be as low as 40% (majority disagreement)
 
-## Data Source
-The dataset is sourced from the [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/Air+Quality).
+### 2. Geometric Regimes Discovered
+Using cosine distance on normalized pollutant ratios revealed three atmospheric regimes:
+- **Regime A**: High CO/NOx ratio (traffic-dominated)
+- **Regime B**: Balanced ratios (background pollution)
+- **Regime C**: Low CO/NOx ratio (industrial/atypical)
 
-## License
-This project is licensed under the MIT License.
+### 3. Temporal Structure
+Cyclic encoding of time (sin/cos transformations) preserves circular geometry, making 23:59 and 00:01 geometrically close as they should be.
+
+## 🛠️ Technical Implementation
+
+### Repository Structure
+
+Air-Quality-Analysis/
+├── data/ # Version-controlled data
+│ ├── raw/ # Original UCI dataset (immutable)
+│ └── processed/ # Cleaned data and feature matrices
+├── notebooks/ # Narrative analysis pipeline
+│ ├── 01_data_exploration.ipynb
+│ ├── 02_cleaning_challenges.ipynb
+│ ├── 03_feature_engineering.ipynb
+│ ├── 04_modeling.ipynb
+│ └── 05_distance_geometry.ipynb # Technical spine showcase
+├── src/ # Production-grade Python modules
+│ ├── data_loader.py # Data loading and preprocessing
+│ ├── features.py # Geometric feature engineering
+│ ├── distance_analyzer.py # Core distance analysis (GeometricAnalyzer)
+│ ├── model_trainer.py # ML model training
+│ └── init.py # Package structure
+├── outputs/ # Generated artifacts
+│ ├── figures/ # Visualizations
+│ └── tables/ # Results tables
+├── models/ # Saved models
+├── requirements.txt # Dependencies
+├── .gitignore
+└── README.md # This file
+
+
+
+### Core Module: `GeometricAnalyzer`
+The `src/distance_analyzer.py` module implements the technical spine with:
+- **Multi-metric comparison**: Euclidean, Cosine, Cityblock, Correlation
+- **Neighbor agreement analysis**: Quantifies metric disagreement
+- **Visualization suite**: Publication-ready figures
+- **Technical reporting**: Automated insights generation
+
+## 🚀 Getting Started
+
+### 1. Installation
+```bash
+# Clone repository
+git clone https://github.com/NathanOpira/Air-Quality-Analysis.git
+cd Air-Quality-Analysis
+
+# Create virtual environment (optional but recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+
+# Run data processing
+python -c "from src.data_loader import run_data_pipeline; run_data_pipeline()"
+
+# Execute the distance geometry analysis (technical spine)
+jupyter notebook notebooks/05_distance_geometry.ipynb
+
+
+# Run all notebooks in sequence
+for notebook in notebooks/0*.ipynb; do
+  echo "Running $notebook..."
+  jupyter nbconvert --to notebook --execute "$notebook" --inplace
+done

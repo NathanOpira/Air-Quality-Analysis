@@ -1,54 +1,110 @@
-"""Data loading helpers for the project.
-
-Provides a simple `load_processed_data` function that returns the cleaned
-DataFrame used by the notebooks and analysis modules.
-
-The loader is intentionally conservative: it will try a few sensible
-parsing options so it works with common exported CSVs.
 """
-from typing import Tuple
+data_loader.py
+Professional data loading and preprocessing for UCI Air Quality Dataset.
+Handles European formatting, sentinel values, and quality control.
+"""
 import pandas as pd
-import os
+import numpy as np
+from datetime import datetime
+import warnings
+warnings.filterwarnings('ignore')
 
-
-def load_processed_data(csv_path: str = None) -> pd.DataFrame:
-    """Load the processed air quality CSV and return a DataFrame.
+def load_raw_data(filepath='data/raw/AirQualityUCI.csv'):
+    """
+    Load the raw UCI Air Quality dataset with correct European formatting.
 
     Parameters
     ----------
-    csv_path : str, optional
-        Path to the processed CSV file. If None, defaults to
-        `data/processed/air_quality_cleaned.csv` in the repo root.
+    filepath : str
+        Path to the raw CSV file
 
     Returns
     -------
     pd.DataFrame
-        Loaded DataFrame with a datetime index when possible.
+        Raw DataFrame with proper parsing
     """
-    if csv_path is None:
-        csv_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'processed', 'air_quality_cleaned.csv')
-        csv_path = os.path.normpath(csv_path)
+    # Read with European settings
+    df = pd.read_csv(
+        filepath,
+        sep=';',
+        decimal=',',
+        na_values=[-200, -200.0]
+    )
 
-    # Try a few parsing strategies
-    try:
-        df = pd.read_csv(csv_path)
-    except FileNotFoundError as exc:
-        raise FileNotFoundError(f"Processed data not found at {csv_path}") from exc
+    # Merge date and time
+    df['datetime'] = pd.to_datetime(
+        df['Date'].astype(str) + ' ' + df['Time'].astype(str),
+        format='%d/%m/%Y %H.%M.%S',
+        errors='coerce'
+    )
 
-    # If there's a column named 'date' or 'datetime', parse it
-    date_cols = [c for c in df.columns if c.lower() in ('date', 'datetime', 'time')]
-    if date_cols:
-        try:
-            df[date_cols[0]] = pd.to_datetime(df[date_cols[0]])
-            df = df.set_index(date_cols[0])
-        except Exception:
-            pass
-    else:
-        # If first column looks like datetimes, try parsing index
-        try:
-            df.index = pd.to_datetime(df.iloc[:, 0])
-            df = df.iloc[:, 1:]
-        except Exception:
-            pass
+    # Set as index and drop original columns
+    df = df.set_index('datetime')
+    df = df.drop(columns=['Date', 'Time'])
 
     return df
+
+def clean_data(df, missing_threshold=0.3):
+    """
+    Clean the air quality data with intelligent handling.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Raw DataFrame
+    missing_threshold : float
+        Remove columns with >threshold% missing values
+
+    Returns
+    -------
+    pd.DataFrame
+        Cleaned DataFrame
+    dict
+        Metadata about cleaning process
+    """
+    # Remove columns with too many missing values
+    missing_ratio = df.isnull().mean()
+    columns_to_drop = missing_ratio[missing_ratio > missing_threshold].index.tolist()
+    df_clean = df.drop(columns=columns_to_drop)
+
+    # Time-aware interpolation for time-series
+    df_filled = df_clean.interpolate(method='time', limit=6)
+    df_filled = df_filled.ffill().bfill()  # Handle edges
+
+    # Remove any remaining NaN rows
+    df_final = df_filled.dropna()
+
+    # Generate metadata
+    metadata = {
+        'original_shape': df.shape,
+        'final_shape': df_final.shape,
+        'removed_columns': columns_to_drop,
+        'kept_columns': df_final.columns.tolist(),
+        'date_range': [df_final.index.min(), df_final.index.max()],
+        'total_samples': len(df_final)
+    }
+
+    return df_final, metadata
+
+def save_processed_data(df, filepath='data/processed/air_quality_cleaned.csv'):
+    """Save processed data to CSV."""
+    df.to_csv(filepath)
+    print(f" Data saved to {filepath}")
+
+def run_data_pipeline():
+    """Complete pipeline: load → clean → save."""
+    print(" Starting data pipeline...")
+
+    # Load
+    df_raw = load_raw_data()
+    print(f" Loaded raw data: {df_raw.shape}")
+
+    # Clean
+    df_clean, meta = clean_data(df_raw)
+    print(f" Cleaned data: {df_clean.shape}")
+    print(f" Date range: {meta['date_range'][0]} to {meta['date_range'][1]}")
+
+    # Save
+    save_processed_data(df_clean)
+
+    return df_clean, meta
