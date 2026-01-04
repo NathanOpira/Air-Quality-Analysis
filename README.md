@@ -33,27 +33,48 @@ Cyclic encoding of time (sin/cos transformations) preserves circular geometry, m
 
 Air-Quality-Analysis/
 ├── data/ # Version-controlled data
+
 │ ├── raw/ # Original UCI dataset (immutable)
+
 │ └── processed/ # Cleaned data and feature matrices
+
 ├── notebooks/ # Narrative analysis pipeline
+
 │ ├── 01_data_exploration.ipynb
+
 │ ├── 02_cleaning_challenges.ipynb
+
 │ ├── 03_feature_engineering.ipynb
+
 │ ├── 04_modeling.ipynb
+
 │ └── 05_distance_geometry.ipynb # Technical spine showcase
+
 ├── src/ # Production-grade Python modules
+
 │ ├── data_loader.py # Data loading and preprocessing
+
 │ ├── features.py # Geometric feature engineering
+
 │ ├── distance_analyzer.py # Core distance analysis (GeometricAnalyzer)
+
 │ ├── model_trainer.py # ML model training
+
 │ └── init.py # Package structure
+
 ├── outputs/ # Generated artifacts
+
 │ ├── figures/ # Visualizations
-│ └── tables/ # Results tables
-├── models/ # Saved models
+
+│ └── tables/
+
+├── models/ 
+
 ├── requirements.txt # Dependencies
+
 ├── .gitignore
-└── README.md # This file
+
+└── README.md 
 
 
 
@@ -94,21 +115,21 @@ done
 📚 References & Resources
 Academic Foundations
 
-Distance Geometry: Blumenthal, L. M. (1953). Theory and Applications of Distance Geometry
+- **Distance Geometry**: Blumenthal, L. M. (1953). Theory and Applications of Distance Geometry
 
-Metric Learning: Weinberger, K. Q., & Saul, L. K. (2009). Distance Metric Learning for Large Margin Nearest Neighbor Classification
+- **Metric Learning**: Weinberger, K. Q., & Saul, L. K. (2009). Distance Metric Learning for Large Margin Nearest Neighbor Classification
 
-Manifold Learning: Tenenbaum, J. B., et al. (2000). A Global Geometric Framework for Nonlinear Dimensionality Reduction
+- **Manifold Learning**: Tenenbaum, J. B., et al. (2000). A Global Geometric Framework for Nonlinear Dimensionality Reduction
 
 Technical Tools
 
-    Scipy: Distance computation (pdist, squareform)
+- **Scipy**: Distance computation (pdist, squareform)
 
-    Scikit-learn: Nearest neighbors, metric utilities
+- **Scikit-learn**: Nearest neighbors, metric utilities
 
-    Matplotlib/Seaborn: Scientific visualization
+- **Matplotlib/Seaborn**: Scientific visualization
 
-    Pandas/Numpy: Data manipulation
+- **Pandas/Numpy**: Data manipulation
 
 👤 Author
 
@@ -120,8 +141,8 @@ GitHub | LinkedIn
 MIT License - see LICENSE file for details.
 🙏 Acknowledgements
 
-    UCI Machine Learning Repository for the Air Quality dataset
+    UCI Machine Learning Repository for the Air Quality dataset.
 
-    The distance geometry research community
+    The distance geometry research community.
 
-    Mentors and peers who provided feedback
+    Mentors and peers who provided feedback.
