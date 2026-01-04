@@ -1,0 +1,5 @@
+,euclidean,cosine,cityblock,correlation
+euclidean,1.0,0.785,0.68,0.673
+cosine,0.785,1.0,0.632,0.764
+cityblock,0.68,0.632,1.0,0.581
+correlation,0.673,0.764,0.581,1.0

@@ -1,0 +1,76 @@
+{
+  "analysis_date": "2026-01-04 16:36:35",
+  "n_samples": 9357,
+  "n_features": 15,
+  "feature_names": [
+    "CO(GT)",
+    "PT08.S1(CO)",
+    "NOx(GT)",
+    "NO2(GT)",
+    "C6H6(GT)",
+    "hour_sin",
+    "hour_cos",
+    "dow_sin",
+    "dow_cos",
+    "hour",
+    "dayofweek",
+    "pollution_index",
+    "is_weekend",
+    "is_night",
+    "season"
+  ],
+  "metrics_tested": [
+    "euclidean",
+    "cosine",
+    "cityblock",
+    "correlation"
+  ],
+  "best_clustering_metric": "cityblock",
+  "best_nn_metric": "correlation",
+  "distance_statistics": [
+    {
+      "metric": "euclidean",
+      "mean_distance": 5.267617696447303,
+      "std_distance": 1.64753619363475,
+      "min_distance": 0.0,
+      "max_distance": 14.957577630469176,
+      "samples": 1000,
+      "compactness_score": 3.197267847304882
+    },
+    {
+      "metric": "cosine",
+      "mean_distance": 0.9967788524508808,
+      "std_distance": 0.40263352370495453,
+      "min_distance": 0.0,
+      "max_distance": 1.9350120574708927,
+      "samples": 1000,
+      "compactness_score": 2.475641788684042
+    },
+    {
+      "metric": "cityblock",
+      "mean_distance": 16.240519178865114,
+      "std_distance": 6.070863703396407,
+      "min_distance": 0.0,
+      "max_distance": 50.1727339863463,
+      "samples": 1000,
+      "compactness_score": 2.6751574894724945
+    },
+    {
+      "metric": "correlation",
+      "mean_distance": 0.9982156118337504,
+      "std_distance": 0.40956232058744735,
+      "min_distance": 0.0,
+      "max_distance": 1.9608706053348126,
+      "samples": 1000,
+      "compactness_score": 2.4372680893444847
+    }
+  ],
+  "data_summary": {
+    "date_range": "2004-03-10 18:00:00 to 2005-04-04 14:00:00",
+    "shape": [
+      9357,
+      51
+    ],
+    "feature_types": "{dtype('float64'): 10, dtype('int64'): 5}"
+  }
+}

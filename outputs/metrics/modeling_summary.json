@@ -1,0 +1,11 @@
+{
+  "Target Variable": "CO(GT)",
+  "Best Model": "Gradient Boosting",
+  "Best Test R\u00b2": 0.812055387182229,
+  "Best Test RMSE": 0.5962480098163094,
+  "Training Samples": 7484,
+  "Testing Samples": 1872,
+  "Number of Features": 51,
+  "Model Saved At": "../models\\best_gradient_boosting.pkl",
+  "Metrics Saved At": "../outputs/metrics\\model_metrics.csv"
+}
