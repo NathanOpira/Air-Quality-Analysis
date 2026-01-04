@@ -79,16 +79,49 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-
 # Run data processing
 python -c "from src.data_loader import run_data_pipeline; run_data_pipeline()"
 
 # Execute the distance geometry analysis (technical spine)
 jupyter notebook notebooks/05_distance_geometry.ipynb
 
-
 # Run all notebooks in sequence
 for notebook in notebooks/0*.ipynb; do
   echo "Running $notebook..."
   jupyter nbconvert --to notebook --execute "$notebook" --inplace
 done
+
+📚 References & Resources
+Academic Foundations
+
+    Distance Geometry: Blumenthal, L. M. (1953). Theory and Applications of Distance Geometry
+
+    Metric Learning: Weinberger, K. Q., & Saul, L. K. (2009). Distance Metric Learning for Large Margin Nearest Neighbor Classification
+
+    Manifold Learning: Tenenbaum, J. B., et al. (2000). A Global Geometric Framework for Nonlinear Dimensionality Reduction
+
+Technical Tools
+
+    Scipy: Distance computation (pdist, squareform)
+
+    Scikit-learn: Nearest neighbors, metric utilities
+
+    Matplotlib/Seaborn: Scientific visualization
+
+    Pandas/Numpy: Data manipulation
+
+👤 Author
+
+Nathan Opira
+Data Science & Analytics Student | Technical Spine Practitioner
+GitHub | LinkedIn
+📄 License
+
+MIT License - see LICENSE file for details.
+🙏 Acknowledgements
+
+    UCI Machine Learning Repository for the Air Quality dataset
+
+    The distance geometry research community
+
+    Mentors and peers who provided feedback
