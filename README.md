@@ -94,11 +94,11 @@ done
 📚 References & Resources
 Academic Foundations
 
-    Distance Geometry: Blumenthal, L. M. (1953). Theory and Applications of Distance Geometry
+Distance Geometry: Blumenthal, L. M. (1953). Theory and Applications of Distance Geometry
 
-    Metric Learning: Weinberger, K. Q., & Saul, L. K. (2009). Distance Metric Learning for Large Margin Nearest Neighbor Classification
+Metric Learning: Weinberger, K. Q., & Saul, L. K. (2009). Distance Metric Learning for Large Margin Nearest Neighbor Classification
 
-    Manifold Learning: Tenenbaum, J. B., et al. (2000). A Global Geometric Framework for Nonlinear Dimensionality Reduction
+Manifold Learning: Tenenbaum, J. B., et al. (2000). A Global Geometric Framework for Nonlinear Dimensionality Reduction
 
 Technical Tools
 
