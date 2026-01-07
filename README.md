@@ -1,17 +1,17 @@
 # The Geometry of Air Quality: A Distance-Based Analysis
 
-## 🎯 Technical Spine
+## Technical Spine
 **"Structure, similarity, and behavior in tabular data through distance metrics."**
 
 This project moves beyond traditional air quality prediction to analyze the **geometric structure** of multivariate pollution data. We investigate how different mathematical definitions of "distance" fundamentally change our understanding of similar atmospheric states.
 
-## 🔬 Core Research Questions
+## Core Research Questions
 1. How do distance metrics (Euclidean, Cosine, Manhattan, Correlation) perceive the same air quality data differently?
 2. What geometric properties emerge when we view pollutants as points in high-dimensional space?
 3. How does feature engineering affect the data manifold structure?
 4. Which metric is optimal for specific tasks (clustering, anomaly detection, forecasting)?
 
-## 📊 Key Findings
+## Key Findings
 ### 1. Metric Dependence of Similarity
 - **Euclidean distance** groups days by *absolute pollution magnitude*
 - **Cosine distance** groups days by *pollutant proportion* (reveals combustion regimes)
@@ -27,7 +27,7 @@ Using cosine distance on normalized pollutant ratios revealed three atmospheric 
 ### 3. Temporal Structure
 Cyclic encoding of time (sin/cos transformations) preserves circular geometry, making 23:59 and 00:01 geometrically close as they should be.
 
-## 🛠️ Technical Implementation
+## Technical Implementation
 
 ### Repository Structure
 
@@ -85,7 +85,7 @@ The `src/distance_analyzer.py` module implements the technical spine with:
 - **Visualization suite**: Publication-ready figures
 - **Technical reporting**: Automated insights generation
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Installation
 ```bash
@@ -112,7 +112,7 @@ for notebook in notebooks/0*.ipynb; do
   jupyter nbconvert --to notebook --execute "$notebook" --inplace
 done
 
-📚 References & Resources
+### References & Resources.
 Academic Foundations
 
 - **Distance Geometry**: Blumenthal, L. M. (1953). Theory and Applications of Distance Geometry
@@ -121,7 +121,7 @@ Academic Foundations
 
 - **Manifold Learning**: Tenenbaum, J. B., et al. (2000). A Global Geometric Framework for Nonlinear Dimensionality Reduction
 
-Technical Tools
+### Technical Tools.
 
 - **Scipy**: Distance computation (pdist, squareform)
 
@@ -131,7 +131,7 @@ Technical Tools
 
 - **Pandas/Numpy**: Data manipulation
 
-👤 Author
+### Author.
 
 Nathan Opira
 Data Science & Analytics Student | Technical Spine Practitioner
@@ -139,7 +139,7 @@ GitHub | LinkedIn
 📄 License
 
 MIT License - see LICENSE file for details.
-🙏 Acknowledgements
+### Acknowledgements.
 
     UCI Machine Learning Repository for the Air Quality dataset.
 
